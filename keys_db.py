@@ -4,11 +4,9 @@ import secrets
 import os
 from datetime import datetime
 import logging
-from passlib.context import CryptContext
+import bcrypt
 
 logger = logging.getLogger(__name__)
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class APIKeyManager:
@@ -42,7 +40,9 @@ class APIKeyManager:
 
     def _hash_key(self, api_key: str) -> str:
         """Generates a bcrypt hash of the plaintext API key."""
-        return pwd_context.hash(api_key)
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(api_key.encode("utf-8"), salt)
+        return hashed.decode("utf-8")
 
     def generate_key(self, name: str) -> str:
         """
@@ -90,7 +90,7 @@ class APIKeyManager:
 
         if result:
             stored_hash = result["key_hash"]
-            return pwd_context.verify(raw_key, stored_hash)
+            return bcrypt.checkpw(raw_key.encode("utf-8"), stored_hash.encode("utf-8"))
 
         return False
 
