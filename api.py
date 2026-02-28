@@ -5,9 +5,11 @@ from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+import secrets
 
 # Import the local tracker classes
-from trackers import BlueDartTracker, DelhiveryTracker, BrowserManager
+from trackers import BlueDartTracker, DelhiveryTracker, BrowserManager, chrome_semaphore
 from keys_db import APIKeyManager
 
 # Load environment variables
@@ -28,6 +30,7 @@ app = FastAPI(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # API Key Security Setup
 API_KEY_NAME = "X-API-Key"
@@ -43,7 +46,7 @@ def get_admin_key(api_key_header: str = Security(api_key_header)):
             status_code=500, detail="Master API_KEY not configured on server"
         )
 
-    if api_key_header == expected_admin_key:
+    if secrets.compare_digest(api_key_header, expected_admin_key):
         return api_key_header
     else:
         raise HTTPException(
@@ -111,7 +114,13 @@ async def revoke_key(
 @limiter.limit("10/minute")
 async def track_shipment(
     request: Request,
-    waybill: str = Query(..., description="The tracking number/waybill"),
+    waybill: str = Query(
+        ...,
+        min_length=1,
+        max_length=50,
+        pattern="^[a-zA-Z0-9_-]+$",
+        description="The tracking number/waybill",
+    ),
     courier: str = Query(
         ..., description="The courier service (BLUEDART or DELHIVERY)"
     ),
@@ -133,17 +142,20 @@ async def track_shipment(
     elif courier == "DELHIVERY":
         # Launching a browser driver for each request can be slow (up to 25s)
         try:
-            with BrowserManager() as driver:
-                tracker = DelhiveryTracker(waybill)
-                event = tracker.fetch_latest_event(driver=driver)
+            # Enforce global semaphore limit to prevent RAM exhaustion from headless browsers
+            async with chrome_semaphore:
+                # BrowserManager is synchronous __enter__ and __exit__
+                with BrowserManager() as driver:
+                    tracker = DelhiveryTracker(waybill)
+                    event = await tracker.fetch_latest_event(driver=driver)
 
-                if not event:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="Tracking information not found or fetch failed",
-                    )
+                    if not event:
+                        raise HTTPException(
+                            status_code=404,
+                            detail="Tracking information not found or fetch failed",
+                        )
 
-                return event
+                    return event
         except HTTPException:
             raise
         except Exception as e:

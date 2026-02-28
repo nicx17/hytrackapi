@@ -14,6 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
+import asyncio
 
 
 class Config:
@@ -32,6 +33,11 @@ if not logger.handlers:
         logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
     logger.addHandler(ch)
+    logger.addHandler(ch)
+
+
+# Global semaphore to limit concurrent headless Chrome instances to 2
+chrome_semaphore = asyncio.Semaphore(2)
 
 
 class BrowserManager:
@@ -139,7 +145,7 @@ class DelhiveryTracker:
         self.waybill = waybill
         self.url = f"https://www.delhivery.com/track-v2/package/{self.waybill}"
 
-    def fetch_latest_event(self, driver=None):
+    async def fetch_latest_event(self, driver=None):
         """Fetches and parses the latest tracking event from Delhivery via a live browser instance."""
         if not driver:
             logger.error("Delhivery tracker requires a Selenium driver instance")

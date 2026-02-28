@@ -7,3 +7,9 @@ SECURITY_REVIEW.md
 __pycache__/api.cpython-314.pyc
 __pycache__/keys_db.cpython-314.pyc
 __pycache__/trackers.cpython-314.pyc
+waf_test.sh
+setup_rpi.sh
+security_test.sh
+api_test.sh
+hytrack.nginx
+hytrack.service
