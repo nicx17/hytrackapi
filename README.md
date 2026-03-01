@@ -1,9 +1,24 @@
 # HyTrack API v2.0.0
 
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/nicx17/hytrackapi?style=for-the-badge)](https://github.com/nicx17/hytrackapi/releases)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+
 A secure, high-performance REST API built with FastAPI to actively scrape and track shipment statuses for Blue Dart and Delhivery. 
 
 This application serves as an independent microservice that replaces unreliable public APIs or manual checking by automating web scraping intelligently. It includes robust local API key management, rate-limiting, and hardened bcrypt hashing for administrative scale and security.
 
+## Table of Contents
+
+- [Architecture & How It Works](#architecture--how-it-works)
+- [Hardware Platform](#hardware-platform)
+- [Security Features](#security-features)
+- [Authentication & API Key Management](#authentication--api-key-management)
+- [Utilizing the Tracker API](#utilizing-the-tracker-api)
+- [Local Development & Setup](#local-development--setup)
+- [Production Deployment](#production-deployment)
+- [License](#license)
 ## Architecture & How It Works
 
 HyTrack is designed as a headless scraping microservice tailored for couriers with unreliable or strictly guarded backend APIs.
@@ -45,7 +60,9 @@ Include the Master Key in the `X-API-Key` header to request a new client token (
 curl -X POST -H 'X-API-Key: your_super_secret_master_key_here' \
     "http://127.0.0.1:8000/admin/keys/generate?name=Mobile_App_Client"
 ```
-*Note: The generated plaintext key will only be shown once! The API securely stores a `bcrypt` hash in the `api_keys.db` SQLite database.*
+
+> [!WARNING]
+> The generated plaintext key will only be shown once! The API securely stores a `bcrypt` hash in the `api_keys.db` SQLite database.
 
 ---
 
@@ -107,3 +124,9 @@ HyTrack API is designed to run as a persistent background service on Linux platf
 1. **Systemd Service**: Create a systemd service file (e.g., `hytrack.service`) pointing `ExecStart` to the `uvicorn` binary inside your `.venv`. Set the server to bind to `0.0.0.0` to listen on your network interfaces.
 2. **Reverse Proxy**: Place `nginx` or another reverse proxy in front of the application running on `127.0.0.1`. This is necessary to properly forward the `X-Real-IP` and `X-Forwarded-For` HTTP headers so the rate-limiter functions correctly instead of blocking the local proxy.
 3. **WAF Protection**: Route external traffic through Cloudflare or a similar Web Application Firewall to block access to the automatically generated `/docs` and `/openapi.json` standard FastAPI endpoints.
+
+---
+
+## License
+
+This project is licensed under the terms of the GNU General Public License v3.0 (GPLv3). Please review the [LICENSE](./LICENSE) file in the root of the repository for full compliance and distribution expectations.
